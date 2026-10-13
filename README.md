@@ -19,6 +19,8 @@ This isn't a toy MCP demo — it's a small, end-to-end **AI + software systems**
 
 ---
 
+
+
 ## 🧩 Architecture
 
 ```mermaid
@@ -77,37 +79,49 @@ graph TB
     style DB fill:#9966CC,color:#fff
 ```
 
+
+
 ---
+
+
 
 ## ✨ Features
 
-| Capability | Description |
-|---|---|
-| 🗣️ **Natural language control** | Ask Claude Desktop to check status, assign tasks, or stop robots — no commands to memorize |
-| 🛡️ **Safety Validator** | Every command is checked against deterministic rules (battery, state, zone validity, rate limits) before execution — independent of the LLM's judgment |
-| 🤖 **Simulated robot fleet** | 3 virtual robots with a full state machine (IDLE → MOVING → DELIVERING → CHARGING / FAULT / EMERGENCY_STOPPED) |
-| 📊 **Live dashboard** | Real-time warehouse map, robot status, and AI action log — auto-refreshing in the browser |
-| 🗃️ **Full audit trail** | Every AI tool call, its approval/rejection, and the reason is logged to SQLite — nothing is a black box |
-| 📈 **Analytics notebook** | Robot utilization, battery consumption trends, task success rate, and completion-time distribution |
-| 🧠 **ML risk prediction** | A trained classifier estimates task failure risk *before* assignment, exposed as its own MCP tool |
-| 🔒 **Single-instance lock** | OS-level file lock prevents two server instances from corrupting shared state |
+
+| Capability                       | Description                                                                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🗣️ **Natural language control** | Ask Claude Desktop to check status, assign tasks, or stop robots — no commands to memorize                                                             |
+| 🛡️ **Safety Validator**         | Every command is checked against deterministic rules (battery, state, zone validity, rate limits) before execution — independent of the LLM's judgment |
+| 🤖 **Simulated robot fleet**     | 3 virtual robots with a full state machine (IDLE → MOVING → DELIVERING → CHARGING / FAULT / EMERGENCY_STOPPED)                                         |
+| 📊 **Live dashboard**            | Real-time warehouse map, robot status, and AI action log — auto-refreshing in the browser                                                              |
+| 🗃️ **Full audit trail**         | Every AI tool call, its approval/rejection, and the reason is logged to SQLite — nothing is a black box                                                |
+| 📈 **Analytics notebook**        | Robot utilization, battery consumption trends, task success rate, and completion-time distribution                                                     |
+| 🧠 **ML risk prediction**        | A trained classifier estimates task failure risk *before* assignment, exposed as its own MCP tool                                                      |
+| 🔒 **Single-instance lock**      | OS-level file lock prevents two server instances from corrupting shared state                                                                          |
+
 
 ---
+
+
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | Why |
-|---|---|---|
-| Core language | Python 3.14 | Mature MCP SDK support, fits the data/ML tooling used elsewhere in the project |
-| MCP server | [FastMCP](https://gofastmcp.com) | Lowest-boilerplate way to build an MCP server; community standard |
-| Validation | Pydantic-style dataclasses | Strict tool/data schemas |
-| Database | SQLite | Zero-setup, structured telemetry, SQL-ready for analytics |
-| Dashboard | Streamlit + Matplotlib | Lightweight, Python-native live UI |
-| Analytics | Pandas + Plotly | Standard EDA toolkit |
-| ML | scikit-learn + joblib | Simple, interpretable models; easy serialization |
-| Testing | pytest + pytest-asyncio | Unit + integration coverage, including in-memory MCP protocol tests |
+
+| Layer         | Technology                       | Why                                                                            |
+| ------------- | -------------------------------- | ------------------------------------------------------------------------------ |
+| Core language | Python 3.14                      | Mature MCP SDK support, fits the data/ML tooling used elsewhere in the project |
+| MCP server    | [FastMCP](https://gofastmcp.com) | Lowest-boilerplate way to build an MCP server; community standard              |
+| Validation    | Pydantic-style dataclasses       | Strict tool/data schemas                                                       |
+| Database      | SQLite                           | Zero-setup, structured telemetry, SQL-ready for analytics                      |
+| Dashboard     | Streamlit + Matplotlib           | Lightweight, Python-native live UI                                             |
+| Analytics     | Pandas + Plotly                  | Standard EDA toolkit                                                           |
+| ML            | scikit-learn + joblib            | Simple, interpretable models; easy serialization                               |
+| Testing       | pytest + pytest-asyncio          | Unit + integration coverage, including in-memory MCP protocol tests            |
+
 
 ---
+
+
 
 ## 📁 Project Structure
 
@@ -126,16 +140,23 @@ ai_warehouse_mcp/
 
 ---
 
+
+
 ## 🚀 Getting Started
 
+
+
 ### Prerequisites
+
 - Python 3.10+
 - Claude Desktop (for natural-language control)
+
+
 
 ### Installation
 
 ```powershell
-git clone <your-repo-url>
+git clone https://github.com/virat-ingle48/AI-Warehouse-MCP.git
 cd ai_warehouse_mcp
 
 python -m venv venv
@@ -143,6 +164,8 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 ```
+
+
 
 ### Run the Tests
 
@@ -167,10 +190,13 @@ Add this to your `claude_desktop_config.json` (`%APPDATA%\Claude\claude_desktop_
 ```
 
 Restart Claude Desktop fully, then try:
+
 - *"What's the current status of my warehouse?"*
 - *"Move robot R1 from Pickup to Dispatch"*
 - *"What's the risk of sending R2 from Storage to Dispatch?"*
 - *"Emergency stop R3"*
+
+
 
 ### Run the Live Dashboard
 
@@ -179,6 +205,8 @@ In a separate terminal:
 ```powershell
 streamlit run dashboard/app.py
 ```
+
+
 
 ### Generate Analytics Data & Train the ML Model
 
@@ -189,19 +217,25 @@ jupyter notebook analytics/ml_model.ipynb
 
 ---
 
+
+
 ## 🧪 Testing Philosophy
 
 The Safety Validator and Simulation Engine are tested **completely independently** of each other and of the MCP layer — randomness (`rng`) and time (`clock`) are injected as dependencies, so every test is deterministic and reproducible, including rate-limiting and fault-injection scenarios. MCP tool behavior is verified using FastMCP's in-memory `Client`, exercising the full protocol (schema, tool discovery, call, response) without needing a subprocess or external client.
 
 ---
 
+
+
 ## 🧠 Machine Learning — Task Failure Risk Prediction
 
 A Logistic Regression model predicts the probability that an assigned task will fail (robot enters `FAULT` state mid-route), based on route distance and starting battery. It outperformed a Random Forest on this dataset size, and its predictions are compared against the dataset's baseline failure rate for interpretability.
 
-Full methodology, metrics, and an **honest discussion of the model's limitations** (failure is partly stochastic by design, so predictive power is necessarily modest) are documented in [`analytics/MODEL_CARD.md`](analytics/MODEL_CARD.md).
+Full methodology, metrics, and an **honest discussion of the model's limitations** (failure is partly stochastic by design, so predictive power is necessarily modest) are documented in `[analytics/MODEL_CARD.md](analytics/MODEL_CARD.md)`.
 
 ---
+
+
 
 ## 🔮 Future Work
 
@@ -212,6 +246,8 @@ Full methodology, metrics, and an **honest discussion of the model's limitations
 - WebSocket-based live dashboard updates instead of polling
 
 ---
+
+
 
 ## 📄 License
 
