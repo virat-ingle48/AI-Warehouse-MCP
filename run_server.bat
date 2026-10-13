@@ -1,0 +1,3 @@
+@echo off
+cd /d "%~dp0"
+venv\Scripts\python.exe -m mcp_server.server
