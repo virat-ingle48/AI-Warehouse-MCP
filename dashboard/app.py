@@ -61,7 +61,7 @@ with col1:
     if latest:
         st.pyplot(draw_warehouse(latest))
     else:
-        st.info("Abhi tak koi telemetry nahi mili — MCP server chal raha hai kya check karo.")
+        st.info("No telemetry Found  — Check MCP server is on or nota.")
 
 with col2:
     st.subheader("Robot Status")
