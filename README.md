@@ -4,9 +4,9 @@
 
 An MCP (Model Context Protocol) server connects an AI agent (Claude Desktop) to a fleet of simulated warehouse robots. Every command the AI sends passes through a rule-based **Safety Validator** before it can touch the simulation, and every decision is logged. It runs entirely on a laptop, with no hardware needed.
 
-<!-- DEMO VIDEO: edit this README on github.com, drag docs/demo.mp4 into the editor right here. GitHub uploads it and inserts a player link on its own line. Then delete this comment. -->
+<!-- ▶ HERO VIDEO: drag Move.mp4 onto the empty line below this comment -->
 
-> A natural-language command goes through the MCP tools and the safety validator, and the robot moves on the live dashboard.
+> *"Move R1 from Storage to Dispatch"*: Claude calls the `assign_task` tool, the validator approves it, R1 starts moving on the live dashboard (left) and the action shows up in the audit log. Claude Desktop is on the right.
 
 ---
 
@@ -20,7 +20,45 @@ It started as inspiration from a physical ESP32 warehouse robot I built for a co
 
 ---
 
-## 🎬 See it in action
+## 🎥 More demos
+
+Each clip is a split screen: live dashboard on the left, Claude Desktop on the right.
+
+### 1. Risk prediction before acting
+
+*"What is the risk of moving r1 charging to dispatch"*: the ML model predicts a 56.4% failure risk against a 39.5% average. Claude explains why: it is a 21-step route and every step carries a small independent chance of failure, so battery (91%) is not the problem.
+
+<!-- ▶ drag risk_pred.mp4 onto the empty line below -->
+
+### 2. Loosely worded commands still work
+
+*"move r3 storage to packaging"*: lowercase, no "from". Claude still resolves the right robot and zones and calls `assign_task`. The LLM handles the language; the validator and engine decide what actually happens.
+
+<!-- ▶ drag understanding.mp4 onto the empty line below -->
+
+### 3. "Is any robot faulty?"
+
+Claude checks every robot's state and battery through the MCP tools (Claude Desktop asks for permission before each tool is used) and reports that all three are healthy. No fault occurs in this clip; it shows the health check.
+
+<!-- ▶ drag fault_detect.mp4 onto the empty line below -->
+
+### 4. Invalid robot
+
+*"move r5 from packging to storage"*: there is no R5. Claude checks the fleet first, sees only R1 to R3, refuses, and offers R2 or R3 instead. No command is sent to the simulation.
+
+<!-- ▶ drag Safety_val.mp4 onto the empty line below -->
+
+### 5. Invalid zone
+
+*"move r2 from charging to delivery"*: there is no "Delivery" zone. Claude lists the real zones and asks whether Dispatch was meant.
+
+<!-- ▶ drag Safety_val02.mp4 onto the empty line below -->
+
+> **About clips 4 and 5:** the agent catches obvious mistakes on its own. The Safety Validator is the independent backstop for when it does not: it rejects busy, faulted, emergency-stopped, low-battery and rate-limited robots whatever the agent decides, and every rejection is stored in the audit log with `approved = 0`. The rules are covered by `tests/test_validator.py`.
+
+---
+
+## 📸 Screenshots
 
 | Live dashboard | Claude checks live state first and catches an invalid robot (R5) |
 |:---:|:---:|
@@ -110,7 +148,7 @@ ai_warehouse_mcp/
 ├── analytics/      # Data generation, EDA notebook, ML notebook, model card
 ├── tests/          # automated tests across every layer
 ├── config/         # shared constants (battery threshold, grid size, ...)
-├── docs/           # demo GIF, screenshots, architecture diagram
+├── docs/           # screenshots and architecture diagram
 └── run_server.bat  # entry point used by Claude Desktop (Windows)
 ```
 
@@ -150,7 +188,7 @@ Fully quit and restart Claude Desktop, then try:
 - *"What zones exist in this warehouse?"*
 - *"What's the risk of sending R2 from Storage to Dispatch?"*
 - *"Move R1 from Pickup to Dispatch"*
-- *"Assign a task to robot R99"* (watch the validator reject it)
+- *"Move R1 from Storage to Dispatch"*, then straight away *"Move R1 from Pickup to Packaging"* (R1 is busy: the agent may notice, otherwise the validator rejects it and the audit log records `approved = 0`)
 - *"Emergency stop R3"*, then *"Reset R3"*
 
 ### Run the dashboard
