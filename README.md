@@ -1,183 +1,139 @@
 # 🏭 AI Warehouse Control System
 
-A fully software-based, laptop-only warehouse simulation controlled through natural language — via an **MCP (Model Context Protocol) server** that connects an AI agent (Claude Desktop) to a simulated fleet of warehouse robots, with a **deterministic safety layer**, **live telemetry**, a **real-time dashboard**, and an **ML-based risk predictor**.
+**Talk to a simulated warehouse in plain English. The AI proposes, a deterministic safety layer decides.**
 
-No physical hardware required. Everything runs on a single machine.
+An MCP (Model Context Protocol) server connects an AI agent (Claude Desktop) to a fleet of simulated warehouse robots. Every command the AI sends passes through a rule-based **Safety Validator** before it can touch the simulation, and every decision is logged. It runs entirely on a laptop, with no hardware needed.
 
----
+<!-- DEMO VIDEO: edit this README on github.com, drag docs/demo.mp4 into the editor right here. GitHub uploads it and inserts a player link on its own line. Then delete this comment. -->
 
-## 🎯 What This Project Demonstrates
-
-This isn't a toy MCP demo — it's a small, end-to-end **AI + software systems** project built to show practical engineering across several disciplines:
-
-- **AI Engineering** — MCP protocol implementation, tool schema design, safe LLM tool-calling, agent-system integration
-- **Software Engineering** — layered architecture, state machines, dependency injection for testability, 47 automated tests
-- **Data Science** — telemetry generation, EDA, utilization/battery/failure analysis (Pandas + Plotly)
-- **Machine Learning** — a task-failure risk classifier (scikit-learn), trained on simulated telemetry, with honest evaluation and a documented [Model Card](analytics/MODEL_CARD.md)
-
-**Core safety principle:** the AI agent never directly mutates system state. Every state-changing command passes through a deterministic Safety Validator before it reaches the simulation — the LLM proposes, the validator decides.
+> A natural-language command goes through the MCP tools and the safety validator, and the robot moves on the live dashboard.
 
 ---
 
+## 💡 Why this project exists
 
+Giving an LLM control over anything real is risky: it can hallucinate a robot ID, ignore a low battery, or loop on a command. This project explores one answer to that problem:
+
+> **The LLM never mutates system state directly.** It can only call a small set of MCP tools, and each state-changing call is independently validated by plain, testable code.
+
+It started as inspiration from a physical ESP32 warehouse robot I built for a college project. I rebuilt the idea as a pure-software system so it can be developed, tested and demoed without any hardware.
+
+---
+
+## 🎬 See it in action
+
+| Live dashboard | Claude checks live state first and catches an invalid robot (R5) |
+|:---:|:---:|
+| ![Dashboard](docs/dashboard.png) | ![Invalid robot caught](docs/invalid_robot.png) |
+
+| ML risk prediction before assigning a task | Audit trail of every AI action |
+|:---:|:---:|
+| ![Risk prediction](docs/risk_prediction.png) | ![Audit log](docs/audit_log.png) |
+
+---
 
 ## 🧩 Architecture
 
-```mermaid
-graph TB
-    subgraph Client["AI Client"]
-        Agent["Claude Desktop<br/>(Natural Language Agent)"]
-    end
+![Architecture Diagram](docs/architecture.png)
 
-    subgraph MCPLayer["MCP Server — Python + FastMCP"]
-        Tools["Tool Layer<br/>get_warehouse_status · assign_task<br/>emergency_stop · reset_robot<br/>predict_task_risk · get_audit_log"]
-        Validator["Safety Validator<br/>(deterministic rules)<br/>whitelist · rate-limit · battery-check<br/>state-check · zone-check"]
-    end
+**How a command flows:**
 
-    subgraph SimLayer["Simulation Engine — Pure Python"]
-        Engine["Tick-based Engine<br/>(background thread, 1 tick/sec)"]
-        Robots["Virtual Robot Fleet<br/>R1 · R2 · R3<br/>(state machine: IDLE/MOVING/<br/>CHARGING/FAULT/E-STOPPED)"]
-        Warehouse["Warehouse Grid<br/>(zones: Storage/Pickup/<br/>Packaging/Dispatch/Charging)"]
-        Tasks["Task Lifecycle<br/>PENDING→ASSIGNED→<br/>IN_PROGRESS→COMPLETED/FAILED"]
-    end
-
-    subgraph DataLayer["Data Layer — SQLite"]
-        DB[("warehouse.db")]
-        Telemetry["telemetry table<br/>(position, battery, state per tick)"]
-        Audit["audit_log table<br/>(every AI decision, logged)"]
-    end
-
-    subgraph MLLayer["ML Layer — scikit-learn"]
-        Model["Logistic Regression<br/>Task Failure Risk Predictor<br/>(joblib-serialized)"]
-    end
-
-    subgraph Presentation["Presentation Layer"]
-        Dashboard["Live Dashboard<br/>(Streamlit + Matplotlib)<br/>auto-refresh every 2s"]
-        Notebook["Analytics Notebook<br/>(Pandas + Plotly)<br/>utilization · battery trends<br/>task success rate"]
-    end
-
-    Agent -->|"MCP protocol (stdio)"| Tools
-    Tools --> Validator
-    Validator -->|"approved commands only"| Engine
-    Validator -.->|"every decision"| Audit
-    Engine --> Robots
-    Engine --> Warehouse
-    Engine --> Tasks
-    Engine -->|"every tick"| Telemetry
-    Tools -->|"risk query"| Model
-    Model -->|"trained on"| DB
-
-    Telemetry --> DB
-    Audit --> DB
-    DB --> Dashboard
-    DB --> Notebook
-
-    style Agent fill:#4A90D9,color:#fff
-    style Validator fill:#D9534F,color:#fff
-    style Engine fill:#5CB85C,color:#fff
-    style Model fill:#F0AD4E,color:#000
-    style DB fill:#9966CC,color:#fff
-```
-
-
+1. You ask Claude Desktop something in natural language.
+2. Claude picks an MCP tool (for example `assign_task`) and fills in the arguments.
+3. The **Safety Validator** checks the command against deterministic rules. If it fails, the agent gets a clear rejection reason.
+4. Only approved commands reach the **Simulation Engine**, which updates robots every tick.
+5. Every tick (telemetry) and every AI decision (audit log) is written to **SQLite**.
+6. The **dashboard** and **analytics notebook** read from the same database, and the **ML model** estimates failure risk before a task is assigned.
 
 ---
-
-
 
 ## ✨ Features
 
-
-| Capability                       | Description                                                                                                                                            |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 🗣️ **Natural language control** | Ask Claude Desktop to check status, assign tasks, or stop robots — no commands to memorize                                                             |
-| 🛡️ **Safety Validator**         | Every command is checked against deterministic rules (battery, state, zone validity, rate limits) before execution — independent of the LLM's judgment |
-| 🤖 **Simulated robot fleet**     | 3 virtual robots with a full state machine (IDLE → MOVING → DELIVERING → CHARGING / FAULT / EMERGENCY_STOPPED)                                         |
-| 📊 **Live dashboard**            | Real-time warehouse map, robot status, and AI action log — auto-refreshing in the browser                                                              |
-| 🗃️ **Full audit trail**         | Every AI tool call, its approval/rejection, and the reason is logged to SQLite — nothing is a black box                                                |
-| 📈 **Analytics notebook**        | Robot utilization, battery consumption trends, task success rate, and completion-time distribution                                                     |
-| 🧠 **ML risk prediction**        | A trained classifier estimates task failure risk *before* assignment, exposed as its own MCP tool                                                      |
-| 🔒 **Single-instance lock**      | OS-level file lock prevents two server instances from corrupting shared state                                                                          |
-
+- **Natural-language control** via 10 MCP tools (status, layout, task assignment, emergency stop, reset, history, telemetry, audit log, risk prediction)
+- **Deterministic Safety Validator** with these rules:
+  - unknown robot or zone rejection
+  - robots in `FAULT` / `EMERGENCY_STOPPED` / busy states can't take tasks
+  - low-battery rejection (single shared threshold constant)
+  - per-robot rate limiting
+  - `emergency_stop` always allowed and never rate-limited
+- **Simulated robot fleet** (3 robots) with a full state machine: `IDLE → MOVING → DELIVERING → CHARGING`, plus `FAULT` and `EMERGENCY_STOPPED`
+- **Seeded, deterministic simulation** for reproducible tests (randomness and time are injected, not hardcoded)
+- **Full audit trail**: every tool call, approval or rejection, and reason is stored
+- **Live Streamlit dashboard** with a warehouse map, robot status and AI action log
+- **Analytics notebook** covering utilization, battery trends, task success rate and completion-time distribution
+- **ML risk predictor** exposed as its own MCP tool
 
 ---
 
+## 🧠 Machine Learning: task failure risk
 
+A Logistic Regression model estimates the probability that a task will fail *before* it is assigned.
+
+| Model | Macro F1 | Accuracy |
+|---|---|---|
+| Baseline (always predict majority class) | 0.41 | 0.69 |
+| **Logistic Regression** (selected) | **0.62** | 0.67 |
+| Random Forest (max_depth=5) | 0.57 | 0.62 |
+
+- Used a **time-based train/test split** to avoid leaking future tasks into training
+- Chose **macro F1 over accuracy** because the classes are imbalanced, and the baseline's higher accuracy is misleading (it never predicts a failure)
+- Route distance and starting battery were the most important features
+- **Honest limitation:** failures in the simulation are partly random by design, so predictive power is modest. The tool's response says so explicitly and compares each prediction to the dataset's average failure rate.
+
+Full methodology: [`analytics/MODEL_CARD.md`](analytics/MODEL_CARD.md)
+
+---
 
 ## 🛠️ Tech Stack
 
-
-| Layer         | Technology                       | Why                                                                            |
-| ------------- | -------------------------------- | ------------------------------------------------------------------------------ |
-| Core language | Python 3.14                      | Mature MCP SDK support, fits the data/ML tooling used elsewhere in the project |
-| MCP server    | [FastMCP](https://gofastmcp.com) | Lowest-boilerplate way to build an MCP server; community standard              |
-| Validation    | Pydantic-style dataclasses       | Strict tool/data schemas                                                       |
-| Database      | SQLite                           | Zero-setup, structured telemetry, SQL-ready for analytics                      |
-| Dashboard     | Streamlit + Matplotlib           | Lightweight, Python-native live UI                                             |
-| Analytics     | Pandas + Plotly                  | Standard EDA toolkit                                                           |
-| ML            | scikit-learn + joblib            | Simple, interpretable models; easy serialization                               |
-| Testing       | pytest + pytest-asyncio          | Unit + integration coverage, including in-memory MCP protocol tests            |
-
+| Layer | Technology |
+|---|---|
+| Language | Python |
+| MCP server | FastMCP |
+| Database | SQLite |
+| Dashboard | Streamlit + Matplotlib |
+| Analytics | Pandas + Plotly + Jupyter |
+| ML | scikit-learn + joblib |
+| Testing | pytest + pytest-asyncio |
 
 ---
-
-
 
 ## 📁 Project Structure
 
 ```
 ai_warehouse_mcp/
-├── simulation/        # Robot, Warehouse, Task models + tick-based Engine
-├── safety/             # Deterministic Safety Validator (testable standalone)
-├── mcp_server/         # FastMCP app: tool layer wiring Validator + Engine + DB
-├── storage/            # SQLite persistence (telemetry, audit log) + singleton lock
-├── dashboard/          # Streamlit live warehouse view
-├── analytics/          # Data generation script, EDA notebook, ML model notebook
-├── tests/              # 47 automated tests across every layer
-├── config/settings.py  # Shared constants (battery thresholds, grid size, etc.)
-└── run_server.bat      # Entry point for Claude Desktop (Windows)
+├── simulation/     # Robot, Warehouse, Task models + tick-based engine
+├── safety/         # Safety Validator (testable with no MCP or hardware)
+├── mcp_server/     # FastMCP app wiring validator + engine + database
+├── storage/        # SQLite persistence (telemetry, audit log)
+├── dashboard/      # Streamlit live view
+├── analytics/      # Data generation, EDA notebook, ML notebook, model card
+├── tests/          # automated tests across every layer
+├── config/         # shared constants (battery threshold, grid size, ...)
+├── docs/           # demo GIF, screenshots, architecture diagram
+└── run_server.bat  # entry point used by Claude Desktop (Windows)
 ```
 
 ---
 
-
-
 ## 🚀 Getting Started
 
-
-
-### Prerequisites
-
-- Python 3.10+
-- Claude Desktop (for natural-language control)
-
-
-
-### Installation
+**Prerequisites:** Python 3.10+, Claude Desktop
 
 ```powershell
-git clone https://github.com/virat-ingle48/AI-Warehouse-MCP.git
+git clone <your-repo-url>
 cd ai_warehouse_mcp
 
 python -m venv venv
 venv\Scripts\activate
-
 pip install -r requirements.txt
-```
 
-
-
-### Run the Tests
-
-```powershell
 pytest -v
 ```
 
-Expected: **47 passed**.
-
 ### Connect to Claude Desktop
 
-Add this to your `claude_desktop_config.json` (`%APPDATA%\Claude\claude_desktop_config.json`):
+Add this to `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
 {
@@ -189,26 +145,25 @@ Add this to your `claude_desktop_config.json` (`%APPDATA%\Claude\claude_desktop_
 }
 ```
 
-Restart Claude Desktop fully, then try:
+Fully quit and restart Claude Desktop, then try:
 
-- *"What's the current status of my warehouse?"*
-- *"Move robot R1 from Pickup to Dispatch"*
+- *"What zones exist in this warehouse?"*
 - *"What's the risk of sending R2 from Storage to Dispatch?"*
-- *"Emergency stop R3"*
+- *"Move R1 from Pickup to Dispatch"*
+- *"Assign a task to robot R99"* (watch the validator reject it)
+- *"Emergency stop R3"*, then *"Reset R3"*
 
+### Run the dashboard
 
-
-### Run the Live Dashboard
-
-In a separate terminal:
+In a separate terminal, with the venv active:
 
 ```powershell
 streamlit run dashboard/app.py
 ```
 
+> Let Claude Desktop start the server. Starting `run_server.bat` manually at the same time creates two simulation instances writing to the same database.
 
-
-### Generate Analytics Data & Train the ML Model
+### Generate analytics data and retrain the model
 
 ```powershell
 python analytics/generate_sample_data.py
@@ -217,38 +172,37 @@ jupyter notebook analytics/ml_model.ipynb
 
 ---
 
+## 🧪 Testing approach
 
-
-## 🧪 Testing Philosophy
-
-The Safety Validator and Simulation Engine are tested **completely independently** of each other and of the MCP layer — randomness (`rng`) and time (`clock`) are injected as dependencies, so every test is deterministic and reproducible, including rate-limiting and fault-injection scenarios. MCP tool behavior is verified using FastMCP's in-memory `Client`, exercising the full protocol (schema, tool discovery, call, response) without needing a subprocess or external client.
-
----
-
-
-
-## 🧠 Machine Learning — Task Failure Risk Prediction
-
-A Logistic Regression model predicts the probability that an assigned task will fail (robot enters `FAULT` state mid-route), based on route distance and starting battery. It outperformed a Random Forest on this dataset size, and its predictions are compared against the dataset's baseline failure rate for interpretability.
-
-Full methodology, metrics, and an **honest discussion of the model's limitations** (failure is partly stochastic by design, so predictive power is necessarily modest) are documented in `[analytics/MODEL_CARD.md](analytics/MODEL_CARD.md)`.
+- The Safety Validator and Simulation Engine are tested **independently** of each other and of MCP.
+- Randomness (`rng`) and time (`clock`) are **injected dependencies**, so fault injection and rate limiting are tested deterministically, with no `sleep` and no flaky tests.
+- MCP tools are tested through FastMCP's in-memory `Client`, covering tool discovery, schema, call and response without a subprocess.
 
 ---
 
+## ⚠️ Known Limitations
 
+Being upfront about what this MVP does *not* do:
+
+- Robots charge **in place** when the battery is low, instead of navigating to the Charging zone.
+- Movement is simple step-by-step toward the target, with no pathfinding or collision avoidance.
+- `reset_robot` is callable by the AI for demo purposes. In production it should require human approval.
+- A single-instance file lock exists (`storage/lock.py`) but is not yet wired into the server entry point.
+- The ML model is trained on simulated data, so it demonstrates the workflow, not real-world accuracy.
+
+---
 
 ## 🔮 Future Work
 
-- Robot navigation toward the Charging zone (currently charges in place — an intentional MVP simplification)
-- A/B comparison of additional models (e.g. gradient boosting) as more telemetry accumulates
-- Human-approval step for `reset_robot` in a production setting (currently AI-callable for demo purposes)
-- A*-based pathfinding and multi-robot collision avoidance
-- WebSocket-based live dashboard updates instead of polling
+- Navigate to the Charging zone, plus A* pathfinding and multi-robot collision avoidance
+- Human-in-the-loop approval for `reset_robot`
+- Wire up the singleton lock at server startup
+- WebSocket-based dashboard updates instead of polling
+- Persistent DB connection / WAL mode for higher telemetry write throughput
+- More models (for example gradient boosting) as telemetry grows
 
 ---
 
-
-
 ## 📄 License
 
-MIT
+MIT. See [LICENSE](LICENSE).
