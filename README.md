@@ -4,7 +4,11 @@
 
 An MCP (Model Context Protocol) server connects an AI agent (Claude Desktop) to a fleet of simulated warehouse robots. Every command the AI sends passes through a rule-based **Safety Validator** before it can touch the simulation, and every decision is logged. It runs entirely on a laptop, with no hardware needed.
 
-<!-- ▶ HERO VIDEO: drag Move.mp4 onto the empty line below this comment -->
+
+
+https://github.com/user-attachments/assets/99b602a8-a861-44b4-a980-85a8f6dcb1e2
+
+
 
 > *"Move R1 from Storage to Dispatch"*: Claude calls the `assign_task` tool, the validator approves it, R1 starts moving on the live dashboard (left) and the action shows up in the audit log. Claude Desktop is on the right.
 
@@ -28,31 +32,51 @@ Each clip is a split screen: live dashboard on the left, Claude Desktop on the r
 
 *"What is the risk of moving r1 charging to dispatch"*: the ML model predicts a 56.4% failure risk against a 39.5% average. Claude explains why: it is a 21-step route and every step carries a small independent chance of failure, so battery (91%) is not the problem.
 
-<!-- ▶ drag risk_pred.mp4 onto the empty line below -->
+
+
+https://github.com/user-attachments/assets/c1e76e28-3947-4c37-90f8-d2da41b70759
+
+
 
 ### 2. Loosely worded commands still work
 
 *"move r3 storage to packaging"*: lowercase, no "from". Claude still resolves the right robot and zones and calls `assign_task`. The LLM handles the language; the validator and engine decide what actually happens.
 
-<!-- ▶ drag understanding.mp4 onto the empty line below -->
+
+
+https://github.com/user-attachments/assets/cdd28640-0e38-4d48-9b2e-d10e802fcc0c
+
+
 
 ### 3. "Is any robot faulty?"
 
 Claude checks every robot's state and battery through the MCP tools (Claude Desktop asks for permission before each tool is used) and reports that all three are healthy. No fault occurs in this clip; it shows the health check.
 
-<!-- ▶ drag fault_detect.mp4 onto the empty line below -->
+
+
+https://github.com/user-attachments/assets/8c1e81e0-44c4-49cd-b1c6-7ca6edbbc49b
+
+
 
 ### 4. Invalid robot
 
 *"move r5 from packging to storage"*: there is no R5. Claude checks the fleet first, sees only R1 to R3, refuses, and offers R2 or R3 instead. No command is sent to the simulation.
 
-<!-- ▶ drag Safety_val.mp4 onto the empty line below -->
+
+
+https://github.com/user-attachments/assets/8289c3e3-a9a2-45f6-87f6-7bfc51308658
+
+
 
 ### 5. Invalid zone
 
 *"move r2 from charging to delivery"*: there is no "Delivery" zone. Claude lists the real zones and asks whether Dispatch was meant.
 
-<!-- ▶ drag Safety_val02.mp4 onto the empty line below -->
+
+
+https://github.com/user-attachments/assets/a6ec409c-40ff-4fd6-8022-9a81e792881d
+
+
 
 > **About clips 4 and 5:** the agent catches obvious mistakes on its own. The Safety Validator is the independent backstop for when it does not: it rejects busy, faulted, emergency-stopped, low-battery and rate-limited robots whatever the agent decides, and every rejection is stored in the audit log with `approved = 0`. The rules are covered by `tests/test_validator.py`.
 
@@ -159,7 +183,7 @@ ai_warehouse_mcp/
 **Prerequisites:** Python 3.10+, Claude Desktop
 
 ```powershell
-git clone <your-repo-url>
+git clone https://github.com/virat-ingle48/AI-Warehouse-MCP.git
 cd ai_warehouse_mcp
 
 python -m venv venv
